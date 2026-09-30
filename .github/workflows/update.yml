@@ -14,8 +14,8 @@ concurrency:
 
 jobs:
   update-source:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     steps:
       - name: Check out default branch
@@ -36,6 +36,7 @@ jobs:
       - name: Commit changes if needed
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -51,3 +52,152 @@ jobs:
 
           git commit -m "Update Stremio source metadata"
           git push origin "HEAD:refs/heads/$DEFAULT_BRANCH"
+
+      - name: Publish Stremio IPA to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+          import urllib.error
+          import urllib.request
+          import zipfile
+          from pathlib import Path
+
+          def gh(*args):
+              subprocess.run(["gh", *args], check=True)
+
+          source = json.loads(
+              Path("source.json").read_text(encoding="utf-8")
+          )
+          app = next(
+              app for app in source["apps"]
+              if app["bundleIdentifier"] == "com.stremio.pal"
+          )
+          version = app["versions"][0]
+          number = version["version"]
+          build = version["buildVersion"]
+
+          if not re.fullmatch(r"\d+(?:\.\d+)*", number):
+              raise ValueError("Unexpected version format")
+          if not re.fullmatch(r"\d+", build):
+              raise ValueError("Unexpected build format")
+
+          tag = f"stremio-v{number}-b{build}"
+          title = f"Stremio {number} (build {build})"
+          repo = os.environ["GH_REPO"]
+          expected_hash = version.get("sha256", "").lower()
+
+          if not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+              raise ValueError(
+                  "Upstream has no valid SHA-256 yet. "
+                  "IPA publication will retry on the next run."
+              )
+
+          # Only a genuine 404 means the release does not exist.
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/releases/tags/{tag}",
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "Stremio-IPA-Mirror",
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  release = json.load(response)
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              release = None
+
+          asset = next(
+              (
+                  item for item in (release or {}).get("assets", [])
+                  if item["name"] == "Stremio.ipa"
+              ),
+              None,
+          )
+
+          if asset is not None:
+              if (
+                  asset.get("state") != "uploaded"
+                  or asset["size"] != version["size"]
+              ):
+                  raise ValueError(
+                      "Existing release asset is incomplete or has a "
+                      "different size. Inspect it before replacing it."
+                  )
+
+              digest = asset.get("digest")
+              if digest and digest != f"sha256:{expected_hash}":
+                  raise ValueError("Existing release asset hash differs")
+
+              # Recover if a previous run uploaded but did not publish.
+              if release["draft"]:
+                  gh("release", "edit", tag, "--draft=false", "--latest")
+
+              print(f"IPA already published: {tag}")
+          else:
+              with tempfile.TemporaryDirectory() as directory:
+                  ipa = Path(directory) / "Stremio.ipa"
+                  notes = Path(directory) / "release-notes.md"
+
+                  print(f"Downloading {version['downloadURL']}")
+                  request = urllib.request.Request(
+                      version["downloadURL"],
+                      headers={"User-Agent": "Stremio-IPA-Mirror"},
+                  )
+                  digest = hashlib.sha256()
+                  size = 0
+
+                  with urllib.request.urlopen(
+                      request, timeout=120
+                  ) as response, ipa.open("wb") as output:
+                      while chunk := response.read(1024 * 1024):
+                          size += len(chunk)
+                          if size > version["size"]:
+                              raise ValueError("IPA exceeds expected size")
+                          digest.update(chunk)
+                          output.write(chunk)
+
+                  if size != version["size"]:
+                      raise ValueError("IPA size does not match metadata")
+                  if digest.hexdigest() != expected_hash:
+                      raise ValueError("IPA SHA-256 does not match metadata")
+                  if not zipfile.is_zipfile(ipa):
+                      raise ValueError("Download is not an IPA/ZIP archive")
+
+                  notes.write_text(
+                      "Unofficial mirror of the unmodified Stremio IPA.\n\n"
+                      f"Original download: {version['downloadURL']}\n\n"
+                      f"SHA-256: `{expected_hash}`\n\n"
+                      + version.get("localizedDescription", ""),
+                      encoding="utf-8",
+                  )
+
+                  if release is None:
+                      # Publish only after the asset uploads successfully.
+                      gh(
+                          "release", "create", tag,
+                          "--draft",
+                          "--target",
+                          subprocess.check_output(
+                              ["git", "rev-parse", "HEAD"], text=True
+                          ).strip(),
+                          "--title", title,
+                          "--notes-file", str(notes),
+                      )
+
+                  gh("release", "upload", tag, str(ipa))
+                  gh("release", "edit", tag, "--draft=false", "--latest")
+                  print(f"Published {tag}")
+          PY
