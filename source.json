@@ -9,7 +9,7 @@
       "category": "entertainment",
       "developerName": "Stremio",
       "downloadURL": "https://dl.strem.io/apple/2.1.3b28/ios/stremio_iOS.ipa",
-      "iconURL": "https://www.stremio.com/website/stremio-logo-small.png",
+      "iconURL": "https://gorlev.github.io/stremio-altstore/stremio-icon-512.png",
       "localizedDescription": "Stremio — a modern media center for movies, series, live TV and web channels. Expand your content library with the add-on system. Requires iPhone and iPad, iOS 13.0+. NOTE: Some features such as Apple Login and Handoff do not work in the sideloaded version.",
       "minOSVersion": "15.0",
       "name": "Stremio",
@@ -58,13 +58,13 @@
       "tintColor": "#7055D9",
       "version": "2.1.3",
       "versionDate": "2026-11-23",
-      "versionDescription": "Stremio 2.1.3 (build 28).",
+      "versionDescription": "Features\n\n- Redesigned toast notifications with adaptive layouts and Liquid Glass styling on supported systems.\n- Added dismissible toast cards with swipe gestures and stacked notifications.\n- Added in-app notifications and modals with artwork and action buttons.\n\nFixes\n\n- Dialogs now appear one at a time, preventing announcements, profile selection, subtitle prompts and add-on confirmations from conflicting.\n- Preserved rounded-button styling on Mac, including Liquid Glass effects on supported versions and custom backgrounds on macOS 12.",
       "versions": [
         {
           "buildVersion": "28",
           "date": "2026-11-23",
           "downloadURL": "https://dl.strem.io/apple/2.1.3b28/ios/stremio_iOS.ipa",
-          "localizedDescription": "Stremio 2.1.3 (build 28).",
+          "localizedDescription": "Features\n\n- Redesigned toast notifications with adaptive layouts and Liquid Glass styling on supported systems.\n- Added dismissible toast cards with swipe gestures and stacked notifications.\n- Added in-app notifications and modals with artwork and action buttons.\n\nFixes\n\n- Dialogs now appear one at a time, preventing announcements, profile selection, subtitle prompts and add-on confirmations from conflicting.\n- Preserved rounded-button styling on Mac, including Liquid Glass effects on supported versions and custom backgrounds on macOS 12.",
           "minOSVersion": "15.0",
           "sha256": "8cae780dbf9e407bd7a0960beba1d601b5ed8d0ea148e4af17544d41772f1e09",
           "size": 88297123,
@@ -179,22 +179,12 @@
           "sha256": "5fb0a315a8987981afc255192f2390637ce482e91a534f0509297843af6b0f9c",
           "size": 77732193,
           "version": "2.0.1"
-        },
-        {
-          "buildVersion": "15",
-          "date": "2026-06-15",
-          "downloadURL": "https://dl.strem.io/apple/2.0.1b15/ios/stremio_iOS.ipa",
-          "localizedDescription": "Stremio 2.0.1 (build 15).",
-          "minOSVersion": "13.0",
-          "sha256": "d4b022c25245c06b6e4425a243b96b9a84501dde8e7bd7b841362aa74be91f34",
-          "size": 77732699,
-          "version": "2.0.1"
         }
       ]
     }
   ],
   "description": "Unofficial mirror of gorlev/stremio-altstore. IPA downloads are hosted by Stremio at dl.strem.io.",
-  "iconURL": "https://www.stremio.com/website/stremio-logo-small.png",
+  "iconURL": "https://gorlev.github.io/stremio-altstore/stremio-icon-512.png",
   "identifier": "community.stremio.mirror.ca650808ac012793",
   "name": "Stremio (SideStore)",
   "news": [],
